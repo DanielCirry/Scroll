@@ -52,7 +52,7 @@ export default function Portfolio() {
 
   useEffect(() => {
     const saved = localStorage.getItem('portfolio-accent')
-    if (saved) {
+    if (saved && /^#[0-9a-fA-F]{6}$/.test(saved)) {
       document.documentElement.style.setProperty('--color-accent', saved)
       document.documentElement.style.setProperty('--color-accent-dim', saved + '26')
       document.documentElement.style.setProperty('--color-border-glow', saved + '33')

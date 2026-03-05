@@ -39,6 +39,7 @@ export default function Upload() {
   }, [authStatus])
 
   useEffect(() => {
+    if (!/^#[0-9a-fA-F]{6}$/.test(accent)) return
     document.documentElement.style.setProperty('--color-accent', accent)
     document.documentElement.style.setProperty('--color-accent-dim', accent + '26')
     document.documentElement.style.setProperty('--color-border-glow', accent + '33')
@@ -169,6 +170,7 @@ export default function Upload() {
             onChange={e => setAdminPassword(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleLogin()}
             placeholder="Admin password"
+            aria-label="Admin password"
             className="w-full px-4 py-2.5 rounded-lg glass text-text-primary placeholder:text-text-muted focus:outline-none focus:border-border-glow transition-colors mb-3"
           />
           <button
@@ -245,11 +247,11 @@ export default function Upload() {
                     {authStatus.hasAdminPassword && (
                       <input type="password" value={secAdminCurrent} onChange={e => setSecAdminCurrent(e.target.value)}
                         className="w-full px-4 py-2.5 rounded-lg glass text-text-primary placeholder:text-text-muted focus:outline-none focus:border-border-glow transition-colors"
-                        placeholder="Current password" />
+                        placeholder="Current password" aria-label="Current password" />
                     )}
                     <input type="password" value={secAdminPw} onChange={e => setSecAdminPw(e.target.value)}
                       className="w-full px-4 py-2.5 rounded-lg glass text-text-primary placeholder:text-text-muted focus:outline-none focus:border-border-glow transition-colors"
-                      placeholder="New password (leave empty to remove)" />
+                      placeholder="New password (leave empty to remove)" aria-label="New admin password" />
                     <button onClick={handleSetAdminPassword} disabled={secAdminStatus === 'saving'}
                       className="px-5 py-2 rounded-lg bg-accent text-bg font-medium text-sm hover:bg-accent/80 disabled:opacity-50 transition-colors">
                       {secAdminStatus === 'saving' ? 'Saving...' : secAdminStatus === 'saved' ? 'Saved!' : secAdminStatus === 'error' ? 'Failed' : 'Save'}
@@ -267,7 +269,7 @@ export default function Upload() {
                   <div className="mt-2 space-y-2">
                     <input type="text" value={secPasscode} onChange={e => setSecPasscode(e.target.value)}
                       className="w-full px-4 py-2.5 rounded-lg glass text-text-primary placeholder:text-text-muted focus:outline-none focus:border-border-glow transition-colors"
-                      placeholder="New passcode (leave empty to remove)" />
+                      placeholder="New passcode (leave empty to remove)" aria-label="Contact passcode" />
                     <button onClick={handleSetContactPasscode} disabled={secPasscodeStatus === 'saving'}
                       className="px-5 py-2 rounded-lg bg-accent text-bg font-medium text-sm hover:bg-accent/80 disabled:opacity-50 transition-colors">
                       {secPasscodeStatus === 'saving' ? 'Saving...' : secPasscodeStatus === 'saved' ? 'Saved!' : secPasscodeStatus === 'error' ? 'Failed' : 'Save'}

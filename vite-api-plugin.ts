@@ -103,6 +103,11 @@ export function devApiPlugin(): Plugin {
             return
           }
 
+          if (fileBuffer.length > 10 * 1024 * 1024) {
+            res.writeHead(413).end('File too large (max 10MB)')
+            return
+          }
+
           const isPdf = filename.toLowerCase().endsWith('.pdf')
           const { parseCv } = await import('./api/lib/parseDocx.js')
           const portfolio = await parseCv(fileBuffer, fields.contactPasscode || '', ENCRYPTION_KEY, isPdf)
@@ -136,8 +141,9 @@ export function devApiPlugin(): Plugin {
           return
         }
 
+        const EDITABLE_KEYS = ['profile', 'skills', 'experience', 'education', 'projects', 'other']
         for (const [key, value] of Object.entries(edits)) {
-          if (key in portfolio) (portfolio as any)[key] = value
+          if (EDITABLE_KEYS.includes(key)) (portfolio as any)[key] = value
         }
 
         writeFileSync(DATA_PATH, JSON.stringify(portfolio, null, 2))

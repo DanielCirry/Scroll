@@ -103,6 +103,7 @@ export default function Contact({ contact }: { contact: ContactData }) {
                 onChange={(e) => setPasscode(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleReveal()}
                 placeholder="Passcode"
+                aria-label="Contact passcode"
                 className="flex-1 px-4 py-2.5 rounded-lg glass text-text-primary placeholder:text-text-muted focus:outline-none focus:border-border-glow transition-colors"
               />
               <button
