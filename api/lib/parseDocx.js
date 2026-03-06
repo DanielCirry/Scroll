@@ -2,7 +2,6 @@ import mammoth from 'mammoth'
 import * as cheerio from 'cheerio'
 import { classifyHeading } from './sectionMap.js'
 import { classifySkills } from './skillMap.js'
-import { createHash, createCipheriv, randomBytes } from 'crypto'
 import bcryptjs from 'bcryptjs'
 
 const EMAIL_REGEX = /[\w.-]+@[\w.-]+\.\w{2,}/g
@@ -11,7 +10,7 @@ const LINKEDIN_REGEX = /(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/[\w-]+/g
 // Matches "City, Country/Code" — generic, no hardcoded names
 const STANDALONE_LOCATION_REGEX = /^[A-Za-z\u00C0-\u024F]+(?:[\s-][A-Za-z\u00C0-\u024F]+)*,?\s+[A-Za-z\u00C0-\u024F]{2,}(?:\s[A-Za-z\u00C0-\u024F]+)*$/i
 
-export async function parseCv(buffer, contactPasscode, encryptionKey, isPdf = false) {
+export async function parseCv(buffer, contactPasscode, isPdf = false) {
   let html
   if (isPdf) {
     const { pdfToHtml } = await import('./parsePdf.js')
@@ -31,7 +30,7 @@ export async function parseCv(buffer, contactPasscode, encryptionKey, isPdf = fa
   const location = extractLocation($, headings, name, contactInfo)
   if (location) contactInfo.location = location
 
-  const encryptedContact = encryptContact(contactInfo, contactPasscode, encryptionKey)
+  const contact = buildContact(contactInfo, contactPasscode)
 
   let profileHtml = sections.profile || ''
 
@@ -77,7 +76,7 @@ export async function parseCv(buffer, contactPasscode, encryptionKey, isPdf = fa
     education: parseEducation(sections.education || ''),
     projects,
     other: buildOtherSections(sections),
-    contact: encryptedContact,
+    contact,
   }
 }
 
@@ -788,36 +787,18 @@ function buildOtherSections(sections) {
   return other
 }
 
-function encryptContact(contactInfo, passcode, encryptionKey) {
+function buildContact(contactInfo, passcode) {
   if (Object.keys(contactInfo).length === 0) {
     return { encrypted: false, data: contactInfo }
   }
 
-  // No passcode — store contact info as plain JSON (publicly visible)
   if (!passcode) {
     return { encrypted: false, data: contactInfo }
   }
 
-  if (!encryptionKey) {
-    return { encrypted: true, data: '', iv: '', passcodeHash: hashPasscode(passcode) }
-  }
-
-  const iv = randomBytes(16)
-  const key = createHash('sha256').update(encryptionKey).digest()
-  const cipher = createCipheriv('aes-256-gcm', key, iv)
-
-  let encrypted = cipher.update(JSON.stringify(contactInfo), 'utf8', 'hex')
-  encrypted += cipher.final('hex')
-  const authTag = cipher.getAuthTag().toString('hex')
-
   return {
     encrypted: true,
-    data: encrypted + ':' + authTag,
-    iv: iv.toString('hex'),
-    passcodeHash: hashPasscode(passcode),
+    data: contactInfo,
+    passcodeHash: bcryptjs.hashSync(passcode, 10),
   }
-}
-
-function hashPasscode(passcode) {
-  return bcryptjs.hashSync(passcode || '', 10)
 }
