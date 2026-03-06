@@ -23,7 +23,7 @@ export async function parseCv(buffer, contactPasscode, isPdf = false) {
 
   const headings = detectHeadings($)
   const { sections, sectionHeadings } = groupBySections($, headings)
-  const contactInfo = extractContactInfo($.text())
+  const contactInfo = extractContactInfo($)
   const name = extractName($, headings, contactInfo)
   const initials = deriveInitials(name)
   const title = extractTitle($, headings, name, contactInfo)
@@ -164,14 +164,22 @@ function groupBySections($, headings) {
   return { sections, sectionHeadings }
 }
 
-function extractContactInfo(text) {
+function extractContactInfo($) {
   const info = {}
 
+  // Try mailto links first (most reliable when <br>-separated text gets concatenated)
+  $('a[href^="mailto:"]').each((_, el) => {
+    if (!info.email) info.email = $(el).attr('href').replace('mailto:', '')
+  })
+
+  const text = $.text()
   // Insert space before email patterns that may be glued to preceding text
   const cleaned = text.replace(/([a-z])([A-Za-z]*@)/g, '$1 $2')
 
-  const emails = cleaned.match(EMAIL_REGEX)
-  if (emails) info.email = emails[0]
+  if (!info.email) {
+    const emails = cleaned.match(EMAIL_REGEX)
+    if (emails) info.email = emails[0]
+  }
 
   const phones = cleaned.match(PHONE_REGEX)
   if (phones) info.phone = phones[0]
@@ -194,8 +202,17 @@ function collectPreamble($, headings, contactInfo) {
     if (firstHeading && el === firstHeading.element) return false
     const tag = $(el).prop('tagName')?.toLowerCase()
     if (preambleTags.includes(tag)) {
-      const text = $(el).text().trim()
-      if (text) rawLines.push(text)
+      // Split on <br> tags to handle multi-line <p> elements (e.g. name<br>title<br>email)
+      const html = $(el).html()
+      if (html && /<br\s*\/?>/i.test(html)) {
+        for (const part of html.split(/<br\s*\/?>/i)) {
+          const text = cheerio.load(part).text().trim()
+          if (text) rawLines.push(text)
+        }
+      } else {
+        const text = $(el).text().trim()
+        if (text) rawLines.push(text)
+      }
     }
   })
 
@@ -227,7 +244,7 @@ function extractName($, headings, contactInfo) {
   for (const text of preamble) {
     if (LABEL_REGEX.test(text)) continue
     if (text.length < 80 && /[A-Za-z]/.test(text) && !classifyHeading(text) && !/@/.test(text) && !/^\+?\d/.test(text)) {
-      if (STANDALONE_LOCATION_REGEX.test(text)) continue
+      if (STANDALONE_LOCATION_REGEX.test(text) && text.includes(',')) continue
       // "Name - Title" format: split on dash and take the first part
       const dashPart = text.split(/\s*[-–—]\s*/)[0].trim()
       if (/engineer|developer|architect|designer|manager|analyst|consultant|lead|director|specialist/i.test(dashPart)) continue
@@ -399,6 +416,14 @@ function parseExperience(html) {
     return datePattern.test(text)
   }
 
+  // Check if the next <p> sibling has a date (for headings like "Company – Location" where role/period is in the next line)
+  function nextParagraphHasDate($, el) {
+    const next = $(el).next()
+    if (!next.is('p')) return false
+    const text = next.text().trim()
+    return datePattern.test(text) || /\d{4}\s*[-–—]\s*(?:Present|\d{4})/i.test(text)
+  }
+
   // Collect content paragraphs after a heading until next heading, returns array of text lines
   function collectContent($el) {
     const lines = []
@@ -420,7 +445,8 @@ function parseExperience(html) {
     const companyText = $(el).text().trim()
     if (!companyText) return
 
-    if (isCompanyHeading(companyText)) {
+    const headingHasDate = isCompanyHeading(companyText)
+    if (headingHasDate || nextParagraphHasDate($, el)) {
       // This is a real company entry
       // Extract role and period from heading if present (e.g. "Dakik - Founder / Director May 2021 - Present")
       const companyParts = companyText.match(/^(.+?)(?:\s*[-–—]\s*)(.+)$/)
@@ -430,14 +456,18 @@ function parseExperience(html) {
 
       if (companyParts) {
         const rest = companyParts[2].trim()
-        // Split role from period at the first month name
-        const periodMatch = rest.match(/((?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}.*)$/i)
-        if (periodMatch) {
-          role = rest.substring(0, periodMatch.index).replace(/\s*[-–—|]\s*$/, '').trim()
-          period = periodMatch[1].trim()
-        } else {
-          role = rest
+        if (headingHasDate) {
+          // Split role from period at the first month name
+          const periodMatch = rest.match(/((?:January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}.*)$/i)
+          if (periodMatch) {
+            role = rest.substring(0, periodMatch.index).replace(/\s*[-–—|]\s*$/, '').trim()
+            period = periodMatch[1].trim()
+          } else {
+            role = rest
+          }
         }
+        // When heading has no date, rest is likely a location (e.g. "Remote", "Manchester")
+        // — leave role/period empty so the next <p> provides them
       }
 
       const highlights = []
