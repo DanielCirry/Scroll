@@ -19,7 +19,7 @@ Upload a CV document and Scroll automatically parses it into structured sections
 - **Accent Color Customization** — Choose from 8 color themes (Cyan, Emerald, Violet, Rose, Amber, Blue, Pink, Teal)
 - **Smooth Scroll Navigation** — Fixed side navigation with animated dots that track the active section
 - **Seeding Animation** — Terminal-style loading animation after upload before the portfolio reveal
-- **Contact Encryption** — Optionally encrypt contact info with a passcode (AES-256-GCM)
+- **Contact Protection** — Optionally hide contact info behind a passcode
 - **Admin Password Protection** — Restrict upload and edit access with an optional admin password
 - **Framer Motion Animations** — Fade-in, scale, and staggered entry effects throughout
 
@@ -46,6 +46,22 @@ npm run dev
 
 The dev server runs on `http://localhost:4200`.
 
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `AZURE_STORAGE_CONNECTION_STRING` | Yes | Azure Blob Storage connection string (from Storage Account → Access keys) |
+| `ADMIN_PASSWORD` | No | Protects upload and edit endpoints. If unset, anyone can upload/edit. |
+| `CONTACT_PASSCODE` | No | Protects personal info visibility. If unset, contact details are shown publicly. |
+
+For local development, create a `.env` file in the project root:
+
+```env
+AZURE_STORAGE_CONNECTION_STRING=DefaultEndpointsProtocol=https;AccountName=...
+ADMIN_PASSWORD=your-admin-password
+CONTACT_PASSCODE=your-contact-passcode
+```
+
 ## API Endpoints
 
 | Method | Endpoint | Description |
@@ -54,9 +70,7 @@ The dev server runs on `http://localhost:4200`.
 | GET | `/api/auth-status` | Check password/passcode status |
 | POST | `/api/upload` | Upload and parse a CV |
 | POST | `/api/edit` | Edit portfolio fields |
-| POST | `/api/reveal-contact` | Decrypt contact info |
-| POST | `/api/set-admin-password` | Set or change admin password |
-| POST | `/api/set-contact-passcode` | Set or change contact passcode |
+| POST | `/api/reveal-contact` | Reveal contact info (requires passcode if set) |
 
 ## Tech Stack
 
@@ -68,4 +82,4 @@ The dev server runs on `http://localhost:4200`.
 | CV Parsing | Mammoth (DOCX), unpdf (PDF), Cheerio (HTML) |
 | Backend | Azure Functions (production), Vite middleware (dev) |
 | Storage | Azure Blob Storage |
-| Security | SHA-256 (admin password), AES-256-GCM (contact encryption) |
+| Security | Plain env var auth (admin password + contact passcode) |

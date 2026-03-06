@@ -2,7 +2,6 @@ import mammoth from 'mammoth'
 import * as cheerio from 'cheerio'
 import { classifyHeading } from './sectionMap.js'
 import { classifySkills } from './skillMap.js'
-import bcryptjs from 'bcryptjs'
 
 const EMAIL_REGEX = /[\w.-]+@[\w.-]+\.\w{2,}/g
 const PHONE_REGEX = /(?:\+?\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}/g
@@ -10,7 +9,7 @@ const LINKEDIN_REGEX = /(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/[\w-]+/g
 // Matches "City, Country/Code" — generic, no hardcoded names
 const STANDALONE_LOCATION_REGEX = /^[A-Za-z\u00C0-\u024F]+(?:[\s-][A-Za-z\u00C0-\u024F]+)*,?\s+[A-Za-z\u00C0-\u024F]{2,}(?:\s[A-Za-z\u00C0-\u024F]+)*$/i
 
-export async function parseCv(buffer, contactPasscode, isPdf = false) {
+export async function parseCv(buffer, isPdf = false) {
   let html
   if (isPdf) {
     const { pdfToHtml } = await import('./parsePdf.js')
@@ -30,7 +29,7 @@ export async function parseCv(buffer, contactPasscode, isPdf = false) {
   const location = extractLocation($, headings, name, contactInfo)
   if (location) contactInfo.location = location
 
-  const contact = buildContact(contactInfo, contactPasscode)
+  const contact = { encrypted: false, data: contactInfo }
 
   let profileHtml = sections.profile || ''
 
@@ -817,18 +816,3 @@ function buildOtherSections(sections) {
   return other
 }
 
-function buildContact(contactInfo, passcode) {
-  if (Object.keys(contactInfo).length === 0) {
-    return { encrypted: false, data: contactInfo }
-  }
-
-  if (!passcode) {
-    return { encrypted: false, data: contactInfo }
-  }
-
-  return {
-    encrypted: true,
-    data: contactInfo,
-    passcodeHash: bcryptjs.hashSync(passcode, 10),
-  }
-}

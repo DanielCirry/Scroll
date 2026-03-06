@@ -112,46 +112,6 @@ export default function Upload() {
     }
   }
 
-  // Security settings
-  const [secAdminPw, setSecAdminPw] = useState('')
-  const [secAdminCurrent, setSecAdminCurrent] = useState('')
-  const [secPasscode, setSecPasscode] = useState('')
-  const [secAdminStatus, setSecAdminStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
-  const [secPasscodeStatus, setSecPasscodeStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
-  const [showSecAdmin, setShowSecAdmin] = useState(false)
-  const [showSecPasscode, setShowSecPasscode] = useState(false)
-
-  const handleSetAdminPassword = async () => {
-    setSecAdminStatus('saving')
-    try {
-      const res = await fetch('/api/set-admin-password', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentPassword: secAdminCurrent || adminPassword, newPassword: secAdminPw }),
-      })
-      if (!res.ok) { setSecAdminStatus('error'); return }
-      setSecAdminStatus('saved')
-      if (secAdminPw) setAdminPassword(secAdminPw)
-      setAuthStatus(prev => ({ ...prev, hasAdminPassword: !!secAdminPw }))
-      setTimeout(() => { setShowSecAdmin(false); setSecAdminStatus('idle'); setSecAdminPw(''); setSecAdminCurrent('') }, 1500)
-    } catch { setSecAdminStatus('error') }
-  }
-
-  const handleSetContactPasscode = async () => {
-    setSecPasscodeStatus('saving')
-    try {
-      const res = await fetch('/api/set-contact-passcode', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ adminPassword, passcode: secPasscode }),
-      })
-      if (!res.ok) { setSecPasscodeStatus('error'); return }
-      setSecPasscodeStatus('saved')
-      setAuthStatus(prev => ({ ...prev, hasContactPasscode: !!secPasscode }))
-      setTimeout(() => { setShowSecPasscode(false); setSecPasscodeStatus('idle'); setSecPasscode('') }, 1500)
-    } catch { setSecPasscodeStatus('error') }
-  }
-
   const editableSections = portfolio
     ? ['profile', 'skills', 'experience', 'education', 'projects', 'other'].filter(
         s => (portfolio as any)[s] !== undefined
@@ -231,55 +191,6 @@ export default function Upload() {
             ))}
           </div>
         </div>
-
-        {/* Security */}
-        {portfolio && (
-          <div className="mb-12">
-            <h2 className="text-xl font-semibold mb-4 text-text-primary">Security</h2>
-            <div className="space-y-3">
-              <div>
-                <button type="button" onClick={() => setShowSecAdmin(!showSecAdmin)}
-                  className="text-sm text-text-secondary hover:text-accent transition-colors">
-                  {showSecAdmin ? '−' : '+'} {authStatus.hasAdminPassword ? 'Change admin password' : 'Set admin password'}
-                </button>
-                {showSecAdmin && (
-                  <div className="mt-2 space-y-2">
-                    {authStatus.hasAdminPassword && (
-                      <input type="password" value={secAdminCurrent} onChange={e => setSecAdminCurrent(e.target.value)}
-                        className="w-full px-4 py-2.5 rounded-lg glass text-text-primary placeholder:text-text-muted focus:outline-none focus:border-border-glow transition-colors"
-                        placeholder="Current password" aria-label="Current password" />
-                    )}
-                    <input type="password" value={secAdminPw} onChange={e => setSecAdminPw(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-lg glass text-text-primary placeholder:text-text-muted focus:outline-none focus:border-border-glow transition-colors"
-                      placeholder="New password" aria-label="New admin password" />
-                    <button onClick={handleSetAdminPassword} disabled={secAdminStatus === 'saving'}
-                      className="px-5 py-2 rounded-lg bg-accent text-bg font-medium text-sm hover:bg-accent/80 disabled:opacity-50 transition-colors">
-                      {secAdminStatus === 'saving' ? 'Saving...' : secAdminStatus === 'saved' ? 'Saved!' : secAdminStatus === 'error' ? 'Failed' : 'Save'}
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <button type="button" onClick={() => setShowSecPasscode(!showSecPasscode)}
-                  className="text-sm text-text-secondary hover:text-accent transition-colors">
-                  {showSecPasscode ? '−' : '+'} {authStatus.hasContactPasscode ? 'Change contact passcode' : 'Set contact passcode'}
-                </button>
-                {showSecPasscode && (
-                  <div className="mt-2 space-y-2">
-                    <input type="text" value={secPasscode} onChange={e => setSecPasscode(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-lg glass text-text-primary placeholder:text-text-muted focus:outline-none focus:border-border-glow transition-colors"
-                      placeholder="New passcode" aria-label="Contact passcode" />
-                    <button onClick={handleSetContactPasscode} disabled={secPasscodeStatus === 'saving'}
-                      className="px-5 py-2 rounded-lg bg-accent text-bg font-medium text-sm hover:bg-accent/80 disabled:opacity-50 transition-colors">
-                      {secPasscodeStatus === 'saving' ? 'Saving...' : secPasscodeStatus === 'saved' ? 'Saved!' : secPasscodeStatus === 'error' ? 'Failed' : 'Save'}
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Edit Sections */}
         {portfolio && (
