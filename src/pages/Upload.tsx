@@ -14,9 +14,8 @@ const ACCENT_COLORS = [
 ]
 
 export default function Upload() {
-  const [adminPassword, setAdminPassword] = useState('')
-  const [authenticated, setAuthenticated] = useState(false)
-  const [authStatus, setAuthStatus] = useState({ hasAdminPassword: false, hasContactPasscode: false })
+  const [uploadPassword, setUploadPassword] = useState('')
+  const [authStatus, setAuthStatus] = useState({ hasUploadPassword: false, hasContactPasscode: false })
   const [file, setFile] = useState<File | null>(null)
   const [status, setStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
@@ -33,11 +32,6 @@ export default function Upload() {
     fetch('/api/data').then(r => r.ok ? r.json() : null).then(setPortfolio).catch(() => null)
   }, [])
 
-  // If no admin password is set, user is automatically authenticated
-  useEffect(() => {
-    if (!authStatus.hasAdminPassword) setAuthenticated(true)
-  }, [authStatus])
-
   useEffect(() => {
     if (!/^#[0-9a-fA-F]{6}$/.test(accent)) return
     document.documentElement.style.setProperty('--color-accent', accent)
@@ -45,21 +39,6 @@ export default function Upload() {
     document.documentElement.style.setProperty('--color-border-glow', accent + '33')
     localStorage.setItem('portfolio-accent', accent)
   }, [accent])
-
-  const handleLogin = async () => {
-    // Try an edit call to verify password
-    const res = await fetch('/api/edit', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ adminPassword, data: {} }),
-    })
-    if (res.ok) {
-      setAuthenticated(true)
-      setErrorMsg('')
-    } else {
-      setErrorMsg('Incorrect admin password')
-    }
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -69,12 +48,12 @@ export default function Upload() {
 
     const formData = new FormData()
     formData.append('file', file)
-    if (adminPassword) formData.append('adminPassword', adminPassword)
+    if (uploadPassword) formData.append('uploadPassword', uploadPassword)
 
     try {
       const res = await fetch('/api/upload', { method: 'POST', body: formData })
       if (!res.ok) {
-        setErrorMsg(res.status === 401 ? 'Invalid admin password' : 'Upload failed')
+        setErrorMsg(res.status === 401 ? 'Invalid upload password' : 'Upload failed')
         setStatus('error')
         return
       }
@@ -101,7 +80,7 @@ export default function Upload() {
       const res = await fetch('/api/edit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ adminPassword, data: { [editSection]: parsed } }),
+        body: JSON.stringify({ uploadPassword, data: { [editSection]: parsed } }),
       })
       if (!res.ok) { setEditStatus('error'); return }
       setPortfolio(prev => prev ? { ...prev, [editSection]: parsed } : prev)
@@ -118,36 +97,6 @@ export default function Upload() {
       )
     : []
 
-  // If admin password is required and not yet authenticated, show login
-  if (authStatus.hasAdminPassword && !authenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center px-6">
-        <div className="w-full max-w-sm text-center">
-          <h1 className="text-3xl font-bold mb-6 text-accent">Admin Login</h1>
-          <input
-            type="password"
-            value={adminPassword}
-            onChange={e => setAdminPassword(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleLogin()}
-            placeholder="Admin password"
-            aria-label="Admin password"
-            className="w-full px-4 py-2.5 rounded-lg glass text-text-primary placeholder:text-text-muted focus:outline-none focus:border-border-glow transition-colors mb-3"
-          />
-          <button
-            onClick={handleLogin}
-            className="w-full py-3 rounded-lg bg-accent text-bg font-medium hover:bg-accent/80 transition-colors"
-          >
-            Unlock
-          </button>
-          {errorMsg && <p className="mt-3 text-sm text-red-400">{errorMsg}</p>}
-          <button onClick={() => navigate('/')} className="mt-6 text-sm text-text-muted hover:text-text-secondary transition-colors">
-            ← Back to portfolio
-          </button>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen flex items-center justify-center px-6 py-12">
       <div className="w-full max-w-2xl">
@@ -163,6 +112,20 @@ export default function Upload() {
 
         {/* Upload */}
         <form onSubmit={handleSubmit} className="space-y-5 mb-12">
+          {authStatus.hasUploadPassword && (
+            <div>
+              <label className="block text-sm text-text-secondary mb-1.5">Upload Password</label>
+              <input
+                type="password"
+                value={uploadPassword}
+                onChange={e => setUploadPassword(e.target.value)}
+                placeholder="Required — portfolio is password-protected"
+                aria-label="Upload password"
+                className="w-full px-4 py-2.5 rounded-lg glass text-text-primary placeholder:text-text-muted focus:outline-none focus:border-border-glow transition-colors"
+              />
+            </div>
+          )}
+
           <div>
             <label className="block text-sm text-text-secondary mb-1.5">CV File (.docx or .pdf)</label>
             <input ref={fileRef} type="file" accept=".docx,.pdf" onChange={e => setFile(e.target.files?.[0] ?? null)} className="hidden" />
